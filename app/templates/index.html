@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AudioShield — AI Deepfake Detection</title>
+    <meta name="description" content="Detect AI-generated synthetic audio in seconds. Upload any audio clip and our trained SVM classifier instantly tells you if it's real human speech or an AI deepfake." />
+
+    <!-- Google Fonts: Inter for body, Syne for headings -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+
+    <style>
+        /* ============================================================
+           DESIGN TOKENS & RESET
+        ============================================================ */
+        :root {
+            --clr-bg:          #080c14;
+            --clr-surface:     #0e1420;
+            --clr-surface-2:   #131a28;
+            --clr-border:      rgba(255,255,255,0.07);
+            --clr-border-glow: rgba(100,160,255,0.25);
+
+            --clr-accent:      #4f8eff;
+            --clr-accent-2:    #7b5cf6;
+            --clr-real:        #22d3a5;
+            --clr-fake:        #ff4f7b;
+            --clr-warn:        #f59e0b;
+
+            --clr-text:        #e8eef8;
+            --clr-muted:       #6b7ea0;
+            --clr-dimmed:      #3a4a68;
+
+            --radius-sm:       8px;
+            --radius-md:       14px;
+            --radius-lg:       22px;
+            --radius-xl:       32px;
+
+            --shadow-glow-blue: 0 0 40px rgba(79,142,255,0.18);
+            --shadow-glow-real: 0 0 50px rgba(34,211,165,0.25);
+            --shadow-glow-fake: 0 0 50px rgba(255,79,123,0.25);
+
+            --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--clr-bg);
+            color: var(--clr-text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ============================================================
+           ANIMATED BACKGROUND GRID + ORBS
+        ============================================================ */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(79,142,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(79,142,255,0.04) 1px, transparent 1px);
+            background-size: 44px 44px;
+        }
+
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.35;
+            animation: orb-drift 18s ease-in-out infinite alternate;
+        }
+
+        .bg-orb-1 {
+            width: 600px; height: 600px;
+            top: -200px; left: -150px;
+            background: radial-gradient(circle, #4f8eff 0%, transparent 65%);
+            animation-delay: 0s;
+        }
+        .bg-orb-2 {
+            width: 500px; height: 500px;
+            bottom: -100px; right: -100px;
+            background: radial-gradient(circle, #7b5cf6 0%, transparent 65%);
+            animation-delay: -6s;
+        }
+        .bg-orb-3 {
+            width: 350px; height: 350px;
+            top: 40%; left: 55%;
+            background: radial-gradient(circle, #22d3a5 0%, transparent 70%);
+            animation-delay: -12s;
+            opacity: 0.15;
+        }
+
+        @keyframes orb-drift {
+            from { transform: translate(0,0) scale(1); }
+            to   { transform: translate(40px, 30px) scale(1.08); }
+        }
+
+        /* ============================================================
+           LAYOUT
+        ============================================================ */
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ============================================================
+           NAVBAR
+        ============================================================ */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 48px;
+            border-bottom: 1px solid var(--clr-border);
+            backdrop-filter: blur(16px);
+            background: rgba(8,12,20,0.7);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--clr-text);
+        }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-2));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .brand-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, var(--clr-accent), var(--clr-accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-badge {
+            padding: 5px 14px;
+            border-radius: 99px;
+            border: 1px solid var(--clr-border-glow);
+            background: rgba(79,142,255,0.08);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--clr-accent);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        /* Model status dot */
+        .model-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--clr-muted);
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--clr-real);
+            box-shadow: 0 0 8px var(--clr-real);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        .status-dot.offline { background: var(--clr-fake); box-shadow: 0 0 8px var(--clr-fake); }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        /* ============================================================
+           HERO SECTION
+        ============================================================ */
+        .hero {
+            text-align: center;
+            padding: 80px 24px 56px;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(79,142,255,0.3);
+            background: rgba(79,142,255,0.08);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--clr-accent);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        .hero-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.4rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+        }
+
+        .hero-title .accent-word {
+            background: linear-gradient(135deg, var(--clr-accent) 20%, var(--clr-accent-2) 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            max-width: 560px;
+            margin: 0 auto 12px;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--clr-muted);
+            font-weight: 400;
+        }
+
+        /* Accuracy badge */
+        .accuracy-chips {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 28px;
+        }
+
+        .chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            border-radius: 99px;
+            background: var(--clr-surface-2);
+            border: 1px solid var(--clr-border);
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--clr-muted);
+        }
+
+        .chip .chip-val {
+            color: var(--clr-text);
+            font-weight: 700;
+        }
+
+        .chip-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+        }
+
+        /* ============================================================
+           MAIN CARD
+        ============================================================ */
+        .main-container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .glass-card {
+            background: rgba(14,20,32,0.75);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .glass-card:hover {
+            border-color: var(--clr-border-glow);
+        }
+
+        /* ============================================================
+           UPLOAD ZONE
+        ============================================================ */
+        .upload-zone {
+            padding: 48px 40px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--clr-dimmed);
+            border-radius: var(--radius-lg);
+            padding: 48px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            position: relative;
+            background: rgba(79,142,255,0.02);
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--clr-accent);
+            background: rgba(79,142,255,0.06);
+            box-shadow: 0 0 30px rgba(79,142,255,0.12), inset 0 0 30px rgba(79,142,255,0.04);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.has-file {
+            border-color: var(--clr-real);
+            background: rgba(34,211,165,0.04);
+        }
+
+        .upload-icon-wrap {
+            width: 72px; height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(79,142,255,0.15), rgba(123,92,246,0.15));
+            border: 1px solid rgba(79,142,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            transition: all var(--transition);
+            font-size: 32px;
+        }
+
+        .upload-area:hover .upload-icon-wrap {
+            transform: scale(1.08);
+            background: linear-gradient(135deg, rgba(79,142,255,0.25), rgba(123,92,246,0.25));
+        }
+
+        .upload-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--clr-text);
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--clr-muted);
+            margin-bottom: 6px;
+        }
+
+        .upload-formats {
+            font-size: 0.75rem;
+            color: var(--clr-dimmed);
+            letter-spacing: 0.04em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn-browse {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 10px 24px;
+            background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-2));
+            color: #fff;
+            border: none;
+            border-radius: 99px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+
+        .btn-browse:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(79,142,255,0.35);
+        }
+
+        /* ============================================================
+           AUDIO PREVIEW PANEL
+        ============================================================ */
+        .audio-preview {
+            display: none;
+            padding: 20px 40px;
+            border-top: 1px solid var(--clr-border);
+            background: rgba(19,26,40,0.6);
+        }
+
+        .audio-preview.visible { display: block; }
+
+        .preview-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--clr-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .file-info-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .file-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(34,211,165,0.15), rgba(79,142,255,0.1));
+            border: 1px solid rgba(34,211,165,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .file-meta { flex: 1; min-width: 0; }
+
+        .file-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 0.75rem;
+            color: var(--clr-muted);
+            margin-top: 2px;
+        }
+
+        .btn-clear {
+            background: none;
+            border: 1px solid var(--clr-border);
+            border-radius: 8px;
+            color: var(--clr-muted);
+            font-family: inherit;
+            font-size: 0.78rem;
+            cursor: pointer;
+            padding: 6px 12px;
+            transition: all var(--transition);
+        }
+
+        .btn-clear:hover {
+            border-color: var(--clr-fake);
+            color: var(--clr-fake);
+        }
+
+        audio {
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            outline: none;
+            accent-color: var(--clr-accent);
+        }
+
+        audio::-webkit-media-controls-panel {
+            background: var(--clr-surface-2);
+        }
+
+        /* ============================================================
+           ANALYZE BUTTON
+        ============================================================ */
+        .analyze-section {
+            padding: 24px 40px;
+            border-top: 1px solid var(--clr-border);
+        }
+
+        .btn-analyze {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--clr-accent) 0%, var(--clr-accent-2) 100%);
+            border: none;
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-analyze::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .btn-analyze:hover::before { opacity: 1; }
+
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(79,142,255,0.4);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-analyze:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        /* Spinner inside button */
+        .spinner {
+            display: none;
+            width: 20px; height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .btn-analyze.loading .btn-icon { display: none; }
+        .btn-analyze.loading .spinner  { display: block; }
+        .btn-analyze.loading .btn-text { opacity: 0.8; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           WAVEFORM VISUALIZER (canvas-based animation during analysis)
+        ============================================================ */
+        .waveform-bar {
+            display: none;
+            align-items: center;
+            gap: 3px;
+            justify-content: center;
+            height: 40px;
+            padding: 4px 0;
+        }
+
+        .waveform-bar.active { display: flex; }
+
+        .wave-bar {
+            width: 3px;
+            border-radius: 2px;
+            background: linear-gradient(to top, var(--clr-accent), var(--clr-accent-2));
+            transform-origin: bottom;
+            animation: wave-bounce 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes wave-bounce {
+            from { transform: scaleY(0.15); opacity: 0.4; }
+            to   { transform: scaleY(1);    opacity: 1;   }
+        }
+
+        /* ============================================================
+           RESULT CARD
+        ============================================================ */
+        .result-card {
+            display: none;
+            padding: 40px;
+        }
+
+        .result-card.visible { display: block; }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 36px;
+        }
+
+        .result-badge {
+            flex-shrink: 0;
+            width: 68px; height: 68px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-badge::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            opacity: 0.15;
+        }
+
+        .result-badge.real {
+            background: rgba(34,211,165,0.12);
+            border: 1px solid rgba(34,211,165,0.3);
+        }
+
+        .result-badge.fake {
+            background: rgba(255,79,123,0.12);
+            border: 1px solid rgba(255,79,123,0.3);
+        }
+
+        .result-meta { flex: 1; }
+
+        .result-verdict {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        .result-verdict.real { color: var(--clr-real); }
+        .result-verdict.fake { color: var(--clr-fake); }
+
+        .result-sublabel {
+            font-size: 0.88rem;
+            color: var(--clr-muted);
+            margin-top: 4px;
+        }
+
+        .result-filename {
+            font-size: 0.78rem;
+            color: var(--clr-dimmed);
+            margin-top: 6px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Confidence gauge */
+        .confidence-section {
+            margin-bottom: 28px;
+        }
+
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: var(--clr-muted);
+            margin-bottom: 10px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .confidence-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--clr-text);
+        }
+
+        .gauge-track {
+            height: 10px;
+            border-radius: 99px;
+            background: var(--clr-surface-2);
+            border: 1px solid var(--clr-border);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 99px;
+            width: 0;
+            transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .gauge-fill.real {
+            background: linear-gradient(90deg, #0d9f7c, var(--clr-real));
+            box-shadow: 0 0 12px rgba(34,211,165,0.5);
+        }
+
+        .gauge-fill.fake {
+            background: linear-gradient(90deg, #c9215c, var(--clr-fake));
+            box-shadow: 0 0 12px rgba(255,79,123,0.5);
+        }
+
+        /* Probability breakdown */
+        .prob-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .prob-card {
+            background: var(--clr-surface-2);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            transition: border-color var(--transition);
+        }
+
+        .prob-card.active-real { border-color: rgba(34,211,165,0.4); background: rgba(34,211,165,0.05); }
+        .prob-card.active-fake { border-color: rgba(255,79,123,0.4); background: rgba(255,79,123,0.05); }
+
+        .prob-card-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--clr-muted);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .prob-card-label .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+
+        .prob-card-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .prob-card-value.real { color: var(--clr-real); }
+        .prob-card-value.fake { color: var(--clr-fake); }
+
+        /* Feature breakdown tags */
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .feat-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--clr-border);
+            background: var(--clr-surface-2);
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--clr-muted);
+        }
+
+        .feat-tag-icon { font-size: 11px; }
+
+        /* Reset button */
+        .btn-reset {
+            width: 100%;
+            margin-top: 24px;
+            padding: 13px;
+            background: none;
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius-md);
+            color: var(--clr-muted);
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-reset:hover {
+            border-color: var(--clr-accent);
+            color: var(--clr-accent);
+            background: rgba(79,142,255,0.05);
+        }
+
+        /* ============================================================
+           ERROR ALERT
+        ============================================================ */
+        .error-alert {
+            display: none;
+            padding: 16px 20px;
+            margin: 0 40px 24px;
+            border-radius: var(--radius-md);
+            background: rgba(255,79,123,0.08);
+            border: 1px solid rgba(255,79,123,0.3);
+            color: #ff8fab;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .error-alert.visible { display: flex; gap: 10px; align-items: flex-start; }
+
+        /* ============================================================
+           HOW IT WORKS SECTION
+        ============================================================ */
+        .how-section {
+            padding: 0 24px 80px;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-subtitle {
+            font-size: 0.85rem;
+            color: var(--clr-muted);
+            margin-bottom: 24px;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 14px;
+        }
+
+        .step-card {
+            background: var(--clr-surface);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius-md);
+            padding: 22px 18px;
+            transition: all var(--transition);
+        }
+
+        .step-card:hover {
+            border-color: var(--clr-border-glow);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-glow-blue);
+        }
+
+        .step-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--clr-accent);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .step-icon { font-size: 24px; margin-bottom: 10px; }
+
+        .step-name {
+            font-size: 0.88rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .step-desc {
+            font-size: 0.75rem;
+            color: var(--clr-muted);
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           FOOTER
+        ============================================================ */
+        .footer {
+            border-top: 1px solid var(--clr-border);
+            padding: 28px 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-copy {
+            font-size: 0.78rem;
+            color: var(--clr-dimmed);
+        }
+
+        .footer-tech {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tech-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--clr-surface-2);
+            border: 1px solid var(--clr-border);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--clr-dimmed);
+            letter-spacing: 0.04em;
+        }
+
+        /* ============================================================
+           ENTRY ANIMATION
+        ============================================================ */
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero          { animation: fade-up 0.7s ease both; }
+        .main-container { animation: fade-up 0.7s 0.15s ease both; }
+        .how-section   { animation: fade-up 0.7s 0.25s ease both; }
+
+        /* ============================================================
+           RESPONSIVE
+        ============================================================ */
+        @media (max-width: 640px) {
+            .navbar { padding: 16px 20px; }
+            .upload-zone { padding: 28px 20px; }
+            .audio-preview { padding: 16px 20px; }
+            .analyze-section { padding: 16px 20px; }
+            .result-card { padding: 24px 20px; }
+            .error-alert { margin: 0 20px 20px; }
+            .prob-breakdown { grid-template-columns: 1fr; }
+            .footer { flex-direction: column; align-items: flex-start; padding: 24px 20px; }
+            .steps-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-canvas" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+</div>
+
+<div class="page-wrapper">
+
+    <!-- ====== NAVBAR ====== -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <a href="/" class="navbar-brand" aria-label="AudioShield Home">
+            <div class="brand-icon" aria-hidden="true">🛡</div>
+            <span class="brand-name">AudioShield</span>
+        </a>
+
+        <div class="model-status" role="status" aria-live="polite">
+            <div class="status-dot {% if not model_loaded %}offline{% endif %}" id="statusDot"></div>
+            <span id="statusText">
+                {% if model_loaded %}SVM Model Ready{% else %}Model Offline{% endif %}
+            </span>
+        </div>
+
+        <div class="navbar-badge">v1.0 · SVM Classifier</div>
+    </nav>
+
+    <!-- ====== HERO ====== -->
+    <header class="hero" role="banner">
+        <div class="hero-eyebrow" aria-label="Project type">
+            <span>🎙</span> AI-Based Audio Deepfake Detection
+        </div>
+
+        <h1 class="hero-title">
+            Is That Voice<br />
+            <span class="accent-word">Real or AI?</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Upload any audio clip and our trained model will instantly classify
+            whether it is genuine human speech or AI-synthesized deepfake audio
+            using spectral acoustic fingerprinting.
+        </p>
+
+        <div class="accuracy-chips" role="list" aria-label="Model performance metrics">
+            <div class="chip" role="listitem">
+                <div class="chip-dot" style="background:#22d3a5;"></div>
+                Accuracy: <span class="chip-val">99.12%</span>
+            </div>
+            <div class="chip" role="listitem">
+                <div class="chip-dot" style="background:#4f8eff;"></div>
+                AUC: <span class="chip-val">0.9996</span>
+            </div>
+            <div class="chip" role="listitem">
+                <div class="chip-dot" style="background:#7b5cf6;"></div>
+                EER: <span class="chip-val">0.94%</span>
+            </div>
+            <div class="chip" role="listitem">
+                <div class="chip-dot" style="background:#f59e0b;"></div>
+                Dataset: <span class="chip-val">FoR-2sec · 35K clips</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ====== MAIN CARD ====== -->
+    <main class="main-container" id="main-content">
+
+        <div class="glass-card" id="uploadCard">
+
+            <!-- Drag & Drop Upload Area -->
+            <div class="upload-zone">
+                <div class="upload-area" id="uploadArea" role="button" tabindex="0"
+                     aria-label="Upload audio file. Click or drag and drop." aria-describedby="uploadHint">
+                    <div class="upload-icon-wrap" aria-hidden="true">🎵</div>
+                    <div class="upload-title">Drop your audio file here</div>
+                    <p class="upload-hint" id="uploadHint">or click to browse files</p>
+                    <p class="upload-formats">Supports WAV · MP3 · FLAC · OGG · M4A &nbsp;·&nbsp; Max 16 MB</p>
+                    <button class="btn-browse" id="btnBrowse" type="button" aria-label="Browse files">
+                        <span>📂</span> Browse Files
+                    </button>
+                    <input type="file" id="fileInput" accept=".wav,.mp3,.flac,.ogg,.m4a"
+                           aria-label="Audio file input" />
+                </div>
+            </div>
+
+            <!-- Audio Preview Panel (shown after file selected) -->
+            <div class="audio-preview" id="audioPreview" aria-live="polite">
+                <div class="preview-label">Selected File</div>
+                <div class="file-info-row">
+                    <div class="file-icon" aria-hidden="true">🎧</div>
+                    <div class="file-meta">
+                        <div class="file-name" id="fileName">filename.wav</div>
+                        <div class="file-size" id="fileSize">0 KB</div>
+                    </div>
+                    <button class="btn-clear" id="btnClear" type="button" aria-label="Remove selected file">
+                        ✕ Remove
+                    </button>
+                </div>
+                <audio id="audioPlayer" controls aria-label="Audio preview player"></audio>
+            </div>
+
+            <!-- Waveform animation during analysis -->
+            <div class="waveform-bar" id="waveformBar" aria-hidden="true">
+                <!-- Bars generated by JS -->
+            </div>
+
+            <!-- Error Alert -->
+            <div class="error-alert" id="errorAlert" role="alert" aria-live="assertive">
+                <span aria-hidden="true">⚠️</span>
+                <span id="errorMessage">An error occurred.</span>
+            </div>
+
+            <!-- Analyze Button -->
+            <div class="analyze-section">
+                <button class="btn-analyze" id="btnAnalyze" disabled type="button"
+                        aria-label="Analyze audio for deepfake detection">
+                    <span class="btn-icon" aria-hidden="true">🔍</span>
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span class="btn-text">Analyze Audio</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ====== RESULT CARD ====== -->
+        <div class="glass-card result-card" id="resultCard" aria-live="polite" aria-atomic="true">
+
+            <!-- Header: verdict badge + label -->
+            <div class="result-header">
+                <div class="result-badge" id="resultBadge" aria-hidden="true"></div>
+                <div class="result-meta">
+                    <div class="result-verdict" id="resultVerdict"></div>
+                    <div class="result-sublabel" id="resultSublabel"></div>
+                    <div class="result-filename" id="resultFilename"></div>
+                </div>
+            </div>
+
+            <!-- Confidence Gauge -->
+            <div class="confidence-section">
+                <div class="confidence-label">
+                    <span>Detection Confidence</span>
+                    <span class="confidence-value" id="confidenceValue">0%</span>
+                </div>
+                <div class="gauge-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                     aria-valuenow="0" id="gaugeTrack" aria-label="Confidence gauge">
+                    <div class="gauge-fill" id="gaugeFill"></div>
+                </div>
+            </div>
+
+            <!-- Probability Breakdown -->
+            <div class="prob-breakdown">
+                <div class="prob-card" id="probRealCard">
+                    <div class="prob-card-label">
+                        <span class="dot" style="background:var(--clr-real);"></span> Genuine Speech
+                    </div>
+                    <div class="prob-card-value real" id="probReal">—</div>
+                </div>
+                <div class="prob-card" id="probFakeCard">
+                    <div class="prob-card-label">
+                        <span class="dot" style="background:var(--clr-fake);"></span> AI Synthetic
+                    </div>
+                    <div class="prob-card-value fake" id="probFake">—</div>
+                </div>
+            </div>
+
+            <!-- Feature Tags -->
+            <div class="feature-tags" aria-label="Analysis methods used">
+                <div class="feat-tag">
+                    <span class="feat-tag-icon">〰</span> MFCC · 13 coefficients
+                </div>
+                <div class="feat-tag">
+                    <span class="feat-tag-icon">📊</span> LFCC · 13 coefficients
+                </div>
+                <div class="feat-tag">
+                    <span class="feat-tag-icon">🎼</span> CQCC · 13 coefficients
+                </div>
+                <div class="feat-tag">
+                    <span class="feat-tag-icon">🤖</span> SVM Classifier
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <button class="btn-reset" id="btnReset" type="button" aria-label="Analyze another audio file">
+                ↩ Analyze Another File
+            </button>
+
+        </div>
+    </main>
+
+    <!-- ====== HOW IT WORKS ====== -->
+    <section class="how-section" aria-labelledby="how-title">
+        <h2 class="section-title" id="how-title">How It Works</h2>
+        <p class="section-subtitle">Five-stage spectral analysis pipeline running end-to-end on your audio</p>
+
+        <div class="steps-grid" role="list">
+            <article class="step-card" role="listitem">
+                <div class="step-num">Step 01</div>
+                <div class="step-icon" aria-hidden="true">🔊</div>
+                <div class="step-name">Resample & Normalize</div>
+                <p class="step-desc">Audio is resampled to 16 kHz mono and amplitude-normalized to [-1, 1] to eliminate recording volume bias.</p>
+            </article>
+            <article class="step-card" role="listitem">
+                <div class="step-num">Step 02</div>
+                <div class="step-icon" aria-hidden="true">✂️</div>
+                <div class="step-name">Silence Trimming</div>
+                <p class="step-desc">Leading/trailing silence is removed using energy-based VAD (top_db=20) so features capture only active speech.</p>
+            </article>
+            <article class="step-card" role="listitem">
+                <div class="step-num">Step 03</div>
+                <div class="step-icon" aria-hidden="true">📡</div>
+                <div class="step-name">MFCC + LFCC + CQCC</div>
+                <p class="step-desc">Three complementary spectral features capture vocal tract envelope, high-frequency artifacts, and pitch harmonics.</p>
+            </article>
+            <article class="step-card" role="listitem">
+                <div class="step-num">Step 04</div>
+                <div class="step-icon" aria-hidden="true">📐</div>
+                <div class="step-name">78-Dim Feature Vector</div>
+                <p class="step-desc">Mean + std statistics across 13 MFCC + 13 LFCC + 13 CQCC coefficients produce a 78-dimensional fingerprint.</p>
+            </article>
+            <article class="step-card" role="listitem">
+                <div class="step-num">Step 05</div>
+                <div class="step-icon" aria-hidden="true">🤖</div>
+                <div class="step-name">SVM Classification</div>
+                <p class="step-desc">A trained Support Vector Machine (RBF kernel) separates real vs. fake audio in high-dimensional feature space at 99.1% accuracy.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- ====== FOOTER ====== -->
+    <footer class="footer" role="contentinfo">
+        <p class="footer-copy">
+            © 2026 AudioShield · AI-Based Audio Deepfake Detection System ·
+            FoR-2sec Dataset · Tahaoglu et al. (2025)
+        </p>
+        <div class="footer-tech" aria-label="Technology stack">
+            <span class="tech-badge">Python 3.14</span>
+            <span class="tech-badge">scikit-learn</span>
+            <span class="tech-badge">librosa</span>
+            <span class="tech-badge">Flask</span>
+            <span class="tech-badge">SVM · RBF</span>
+        </div>
+    </footer>
+
+</div><!-- end .page-wrapper -->
+
+<script>
+/* ============================================================
+   AudioShield — Interactive JavaScript
+   Handles: drag/drop, file preview, API calls, result rendering
+============================================================ */
+(function() {
+    'use strict';
+
+    // ---- DOM references ----
+    const uploadArea   = document.getElementById('uploadArea');
+    const uploadZone   = document.querySelector('.upload-zone');
+    const fileInput    = document.getElementById('fileInput');
+    const btnBrowse    = document.getElementById('btnBrowse');
+    const audioPreview = document.getElementById('audioPreview');
+    const audioPlayer  = document.getElementById('audioPlayer');
+    const fileName     = document.getElementById('fileName');
+    const fileSize     = document.getElementById('fileSize');
+    const btnClear     = document.getElementById('btnClear');
+    const btnAnalyze   = document.getElementById('btnAnalyze');
+    const waveformBar  = document.getElementById('waveformBar');
+    const errorAlert   = document.getElementById('errorAlert');
+    const errorMsg     = document.getElementById('errorMessage');
+    const resultCard   = document.getElementById('resultCard');
+
+    // Result elements
+    const resultBadge    = document.getElementById('resultBadge');
+    const resultVerdict  = document.getElementById('resultVerdict');
+    const resultSublabel = document.getElementById('resultSublabel');
+    const resultFilename = document.getElementById('resultFilename');
+    const confidenceValue= document.getElementById('confidenceValue');
+    const gaugeFill      = document.getElementById('gaugeFill');
+    const gaugeTrack     = document.getElementById('gaugeTrack');
+    const probReal       = document.getElementById('probReal');
+    const probFake       = document.getElementById('probFake');
+    const probRealCard   = document.getElementById('probRealCard');
+    const probFakeCard   = document.getElementById('probFakeCard');
+    const btnReset       = document.getElementById('btnReset');
+
+    let selectedFile = null;
+
+    // ---- Build waveform bars ----
+    (function buildWaveform() {
+        const count = 28;
+        for (let i = 0; i < count; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'wave-bar';
+            const baseH = 8 + Math.random() * 28;
+            bar.style.height = baseH + 'px';
+            bar.style.animationDelay = (i * 0.06) + 's';
+            bar.style.animationDuration = (0.6 + Math.random() * 0.5) + 's';
+            waveformBar.appendChild(bar);
+        }
+    })();
+
+    // ---- Utility: format file size ----
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    // ---- Show error ----
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorAlert.classList.add('visible');
+        setTimeout(() => errorAlert.classList.remove('visible'), 6000);
+    }
+
+    // ---- Hide error ----
+    function hideError() {
+        errorAlert.classList.remove('visible');
+    }
+
+    // ---- Handle file selection ----
+    function handleFile(file) {
+        if (!file) return;
+
+        const allowed = ['audio/wav', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/x-m4a', 'audio/mp4', 'audio/x-wav'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        const allowedExts = ['wav','mp3','flac','ogg','m4a'];
+
+        if (!allowedExts.includes(ext)) {
+            showError(`❌ Unsupported format: .${ext}. Please upload WAV, MP3, FLAC, OGG, or M4A.`);
+            return;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+            showError('❌ File exceeds 16 MB limit. Please upload a smaller audio clip.');
+            return;
+        }
+
+        hideError();
+        selectedFile = file;
+
+        // Update UI
+        fileName.textContent = file.name;
+        fileSize.textContent = formatBytes(file.size);
+
+        const objectURL = URL.createObjectURL(file);
+        audioPlayer.src = objectURL;
+
+        uploadArea.classList.add('has-file');
+        audioPreview.classList.add('visible');
+        btnAnalyze.disabled = false;
+
+        // Reset any previous result
+        resultCard.classList.remove('visible');
+    }
+
+    // ---- Clear file ----
+    function clearFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        audioPlayer.src = '';
+        audioPreview.classList.remove('visible');
+        uploadArea.classList.remove('has-file');
+        btnAnalyze.disabled = true;
+        resultCard.classList.remove('visible');
+        hideError();
+    }
+
+    // ---- Event: browse button ----
+    btnBrowse.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('click', (e) => {
+        if (e.target !== btnBrowse) fileInput.click();
+    });
+
+    // ---- Event: keyboard accessibility ----
+    uploadArea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInput.click();
+        }
+    });
+
+    // ---- Event: file input ----
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            handleFile(fileInput.files[0]);
+        }
+    });
+
+    // ---- Drag & Drop ----
+    ['dragenter', 'dragover'].forEach(evt => {
+        uploadArea.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'dragend'].forEach(evt => {
+        uploadArea.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+        });
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        handleFile(file);
+    });
+
+    // ---- Event: clear button ----
+    btnClear.addEventListener('click', clearFile);
+
+    // ---- Event: reset button ----
+    btnReset.addEventListener('click', () => {
+        clearFile();
+        resultCard.classList.remove('visible');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // ---- Animate gauge fill ----
+    function animateGauge(pct, isReal) {
+        gaugeFill.className = 'gauge-fill ' + (isReal ? 'real' : 'fake');
+        gaugeTrack.setAttribute('aria-valuenow', Math.round(pct));
+
+        // Trigger reflow to restart transition
+        gaugeFill.style.width = '0%';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                gaugeFill.style.width = pct + '%';
+            });
+        });
+
+        // Animate the number
+        let start = 0;
+        const end = pct;
+        const duration = 1200;
+        const startTime = performance.now();
+
+        function update(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = start + (end - start) * eased;
+            confidenceValue.textContent = current.toFixed(1) + '%';
+            if (progress < 1) requestAnimationFrame(update);
+        }
+
+        requestAnimationFrame(update);
+    }
+
+    // ---- Render results ----
+    function renderResult(data) {
+        const isReal = data.label === 0;
+
+        // Badge
+        resultBadge.textContent = isReal ? '✅' : '❌';
+        resultBadge.className = 'result-badge ' + (isReal ? 'real' : 'fake');
+
+        // Verdict
+        resultVerdict.textContent = isReal ? 'Genuine Human Speech' : 'AI-Generated Deepfake';
+        resultVerdict.className   = 'result-verdict ' + (isReal ? 'real' : 'fake');
+
+        // Sublabel
+        resultSublabel.textContent = isReal
+            ? 'This audio exhibits natural human speech acoustics with no synthetic artifacts detected.'
+            : 'This audio shows spectral patterns consistent with neural TTS / voice-cloning synthesis.';
+
+        resultFilename.textContent = '📄 ' + (data.filename || 'uploaded file');
+
+        // Probability cards
+        probReal.textContent = (data.confidence_real ?? '—') + (data.confidence_real != null ? '%' : '');
+        probFake.textContent = (data.confidence_fake ?? '—') + (data.confidence_fake != null ? '%' : '');
+
+        probRealCard.className = 'prob-card' + (isReal ? ' active-real' : '');
+        probFakeCard.className = 'prob-card' + (!isReal ? ' active-fake' : '');
+
+        // Gauge
+        animateGauge(data.confidence_pct ?? 0, isReal);
+
+        // Show card with smooth scroll
+        resultCard.classList.add('visible');
+        setTimeout(() => {
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    }
+
+    // ---- Event: Analyze button ----
+    btnAnalyze.addEventListener('click', async () => {
+        if (!selectedFile) {
+            showError('Please select an audio file first.');
+            return;
+        }
+
+        hideError();
+
+        // Show loading state
+        btnAnalyze.disabled = true;
+        btnAnalyze.classList.add('loading');
+        btnAnalyze.querySelector('.btn-text').textContent = 'Analyzing...';
+        waveformBar.classList.add('active');
+        resultCard.classList.remove('visible');
+
+        try {
+            const formData = new FormData();
+            formData.append('audio', selectedFile);
+
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Server error (HTTP ${response.status})`);
+            }
+
+            renderResult(data);
+
+        } catch (err) {
+            showError('⚠️ ' + (err.message || 'An unexpected error occurred. Please try again.'));
+            console.error('Prediction error:', err);
+        } finally {
+            // Restore button state
+            btnAnalyze.disabled = false;
+            btnAnalyze.classList.remove('loading');
+            btnAnalyze.querySelector('.btn-text').textContent = 'Analyze Audio';
+            waveformBar.classList.remove('active');
+        }
+    });
+
+})();
+</script>
+
+</body>
+</html>

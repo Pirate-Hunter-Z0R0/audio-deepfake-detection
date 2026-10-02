@@ -1,0 +1,4 @@
+Model,Train Accuracy,Test Accuracy,Precision,Recall,F1-Score
+Logistic Regression,0.9788,0.935,0.9394,0.93,0.9347
+Support Vector Machine (SVM),0.9988,0.98,0.9898,0.97,0.9798
+Random Forest,1,0.98,0.9898,0.97,0.9798

@@ -1,0 +1,28 @@
+=================================================================
+     AUDIO DEEPFAKE DETECTION SYSTEM — EVALUATION REPORT         
+=================================================================
+
+Model Evaluated     : ResNeXt Deep Model
+Model Path          : D:\Projects\Deepfake Detection\audio-deepfake-detection\models\deep_model.h5
+Test Set File       : data/features/test_split.csv
+Total Test Samples  : 7148
+
+-----------------------------------------------------------------
+EVALUATION METRICS:
+-----------------------------------------------------------------
+Accuracy            : 99.82%
+Precision           : 0.9986
+Recall              : 0.9978
+F1-Score            : 0.9982
+AUC (ROC Area)      : 0.9996
+Equal Error Rate    : 0.14%
+EER Decision Thresh : 0.3292
+-----------------------------------------------------------------
+
+EQUAL ERROR RATE (EER) EXPLANATION FOR VIVA:
+-----------------------------------------------------------------
+Equal Error Rate (EER) is the operating point on the ROC curve where
+False Acceptance Rate (FAR - falsely passing a deepfake voice as real)
+equals False Rejection Rate (FRR - falsely rejecting a real voice as fake).
+A lower EER value indicates a superior and more reliable detector.
+=================================================================

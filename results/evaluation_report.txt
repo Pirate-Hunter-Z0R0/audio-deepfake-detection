@@ -1,0 +1,13 @@
+=== AI-Based Audio Deepfake Detection System Evaluation ===
+
+Model Path       : models/baseline_model.pkl
+Test Samples     : 7148
+
+Accuracy            : 0.9912
+Precision           : 0.9897
+Recall              : 0.9927
+F1_Score            : 0.9912
+AUC                 : 0.9996
+EER                 : 0.0094
+EER_Percentage      : 0.94
+EER_Threshold       : 0.5051
