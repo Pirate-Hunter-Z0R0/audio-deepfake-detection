@@ -158,6 +158,7 @@ python app/app.py
 ```
 Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wav, .mp3, .flac) through the web interface to get a real-time genuine vs. deepfake classification with confidence scores.
 
+<!--
 ---
 
 ## 📊 Results Summary
@@ -193,6 +194,7 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 > **Key Finding:** Both models show significant accuracy drops under audio degradation, especially white noise. This aligns with findings from Rabhi et al. (2024) that standard spectral-feature-based detectors are vulnerable to signal perturbations.
 
 ---
+-->
 
 ## 🔬 Technical Details
 
@@ -222,16 +224,6 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 1. **Tahaoglu, G., Akbal, E., & Dogan, S. (2025).** *"Deepfake Audio Detection with Spectral Features and ResNeXt-Based Architecture."* — Proposes using MFCC/LFCC/CQCC spectral features with a ResNeXt50 CNN for audio deepfake detection.
 
 2. **Rabhi, B., Ma, H., Bakiras, S., & Ben Ayed, R. (2024).** *"Audio-Deepfake Detection: Adversarial Attacks and Countermeasures."* — Demonstrates that audio deepfake detectors are vulnerable to adversarial perturbations and evaluates countermeasures for improved robustness.
-
----
-
-## 👥 Credits
-
-Developed as a minor academic project for **[YOUR COLLEGE NAME]** by:
-- [Team Member 1]
-- [Team Member 2]
-- [Team Member 3]
-- [Team Member 4]
 
 ---
 
