@@ -1,0 +1,20 @@
+file,true_class,pred_class_active,confidence_%,fake_prob_active,error_type,speaker_id,source,duration_sec,snr_db,in_adaptation_train
+teammate04_rvc_0001.wav,Fake,Real,99.35,0.0065,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,6.34,47.54,False
+teammate04_rvc_0002.wav,Fake,Real,59.17,0.4083,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,6.34,46.81,False
+teammate04_rvc_0003.wav,Fake,Real,99.31,0.0069,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,6.3,48.65,False
+teammate04_rvc_0004.wav,Fake,Real,99.85,0.0015,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,7.02,47.82,False
+teammate04_rvc_0005.wav,Fake,Real,88.15,0.1185,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,7.48,47.5,False
+teammate04_rvc_0006.wav,Fake,Real,99.49,0.0051,FN (Evaded Deepfake),teammate04,TTS+RVC_v2,6.88,48.09,False
+teammate01_clone_001.wav,Fake,Real,78.17,0.2183,FN (Evaded Deepfake),teammate01,XTTS-v2,5.38,88.42,False
+teammate01_clone_002.wav,Fake,Real,99.44,0.0056,FN (Evaded Deepfake),teammate01,XTTS-v2,4.64,88.96,False
+teammate01_clone_003.wav,Fake,Real,99.9,0.001,FN (Evaded Deepfake),teammate01,XTTS-v2,5.61,46.86,False
+teammate01_clone_004.wav,Fake,Real,83.76,0.1624,FN (Evaded Deepfake),teammate01,XTTS-v2,4.36,88.61,False
+teammate01_clone_005.wav,Fake,Real,99.92,0.0008,FN (Evaded Deepfake),teammate01,XTTS-v2,5.57,87.53,False
+teammate01_clone_006.wav,Fake,Real,99.0,0.01,FN (Evaded Deepfake),teammate01,XTTS-v2,4.82,87.99,False
+teammate01_clone_007.wav,Fake,Real,99.23,0.0077,FN (Evaded Deepfake),teammate01,XTTS-v2,3.99,88.56,False
+teammate01_clone_008.wav,Fake,Real,99.85,0.0015,FN (Evaded Deepfake),teammate01,XTTS-v2,5.57,54.25,False
+teammate01_clone_009.wav,Fake,Real,92.84,0.0716,FN (Evaded Deepfake),teammate01,XTTS-v2,4.5,86.74,False
+teammate01_clone_011.wav,Fake,Real,99.96,0.0004,FN (Evaded Deepfake),teammate01,XTTS-v2,4.96,88.96,False
+teammate01_clone_012.wav,Fake,Real,99.98,0.0002,FN (Evaded Deepfake),teammate01,XTTS-v2,4.13,88.95,False
+teammate01_clone_013.wav,Fake,Real,99.85,0.0015,FN (Evaded Deepfake),teammate01,XTTS-v2,5.38,53.2,False
+teammate01_clone_015.wav,Fake,Real,93.25,0.0675,FN (Evaded Deepfake),teammate01,XTTS-v2,4.03,88.44,False

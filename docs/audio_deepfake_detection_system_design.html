@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software Design Document - Audio Deepfake Detection System</title>
+<style>
+  body { font-family: Georgia, "Times New Roman", serif; color: #1f1f1f; background: #fff; line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; font-size: 17px; }
+  h1, h2, h3 { font-family: Arial, Helvetica, sans-serif; line-height: 1.25; }
+  h1 { font-size: 28px; margin-bottom: 4px; }
+  h2 { font-size: 22px; border-bottom: 2px solid #1d4e89; padding-bottom: 4px; margin-top: 46px; color: #1d4e89; }
+  h3 { font-size: 17px; margin-top: 30px; }
+  .sub { color: #555; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 15px; }
+  th, td { border: 1px solid #999; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #eee; font-family: Arial, Helvetica, sans-serif; }
+  .tablewrap, .diagram { overflow-x: auto; }
+  .diagram { border: 1px solid #bbb; padding: 10px; margin: 10px 0 4px; text-align: center; }
+  .fig { text-align: center; font-size: 14px; color: #555; margin: 0 0 18px; font-family: Arial, Helvetica, sans-serif; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 14px; background: #f1f1f1; padding: 1px 4px; }
+  .note { border-left: 4px solid #1d4e89; background: #f4f7fb; padding: 8px 14px; margin: 16px 0; font-size: 15px; }
+  nav ul { list-style: none; padding-left: 0; }
+  nav a { color: #1d4e89; }
+  a:focus { outline: 2px solid #1d4e89; }
+  pre.mermaid { background: none; margin: 0; }
+  @media (max-width: 560px) { body { font-size: 16px; } }
+  @media print { .diagram { page-break-inside: avoid; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  window.addEventListener('load', function () {
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose', flowchart: { useMaxWidth: false } });
+  });
+</script>
+</head>
+<body>
+
+<h1>Architectular Design</h1>
+<p class="sub">AI-Based Audio Deepfake Detection System: design models for the four modules</p>
+
+<nav>
+<h3>Contents</h3>
+<ul>
+  <li><a href="#sys">1. System-level design (use case, context DFD, architecture)</a></li>
+  <li><a href="#m1">2. Module M1: Data Preparation</a></li>
+  <li><a href="#m2">3. Module M2: Model Training</a></li>
+  <li><a href="#m3">4. Module M3: Evaluation and Robustness</a></li>
+  <li><a href="#m4">5. Module M4: Web Application</a></li>
+</ul>
+</nav>
+
+<!-- ============ SYSTEM ============ -->
+<h2 id="sys">1. System-level design</h2>
+<p>Audio Deepfake Detection System has two kinds of users. The <b>researcher</b> runs the scripts that prepare data, train models and test them. The <b>end user</b> uploads an audio clip on the website and reads the result.</p>
+
+<h3>1.1 Use case diagram</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+R["Actor: Researcher"]
+U["Actor: End user"]
+subgraph S["Audio Deepfake Detection System system"]
+  UC1(["Download dataset"])
+  UC2(["Preprocess audio"])
+  UC3(["Extract features"])
+  UC4(["Train baseline models"])
+  UC5(["Train deep model"])
+  UC6(["Evaluate model"])
+  UC7(["Run robustness test"])
+  UC8(["Upload audio"])
+  UC9(["View Genuine or Deepfake result"])
+end
+R --- UC1
+R --- UC2
+R --- UC3
+R --- UC4
+R --- UC5
+R --- UC6
+R --- UC7
+U --- UC8
+U --- UC9
+</pre></div>
+<p class="fig">Figure 1: Use case diagram</p>
+
+<h3>1.2 Context DFD (Level 0)</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+E1["External: Dataset source FoR-2sec"]
+E2["External: Researcher"]
+E3["External: End user"]
+SYS(("0 Audio Deepfake Detection System system"))
+E1 -->|"audio clips"| SYS
+E2 -->|"run commands"| SYS
+SYS -->|"trained models, metrics, charts"| E2
+E3 -->|"audio file"| SYS
+SYS -->|"label and confidence"| E3
+</pre></div>
+<p class="fig">Figure 2: Level 0 data flow diagram</p>
+
+<h3>1.3 Layered architecture</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+subgraph P["Presentation layer"]
+  UI["index.html upload page"]
+end
+subgraph A["Application layer"]
+  API["app.py Flask server"]
+  CLI["Command-line scripts in src"]
+end
+subgraph PR["Processing layer"]
+  PRE["Preprocessing"]
+  FEA["Feature extraction"]
+end
+subgraph ML["Model layer"]
+  TR["Training"]
+  INF["Prediction"]
+  EV["Evaluation and robustness"]
+end
+subgraph D["Data layer"]
+  DS[("data")]
+  MS[("models")]
+  RS[("results")]
+end
+UI --> API
+API --> INF
+API --> PRE
+CLI --> PRE
+PRE --> FEA
+PRE --> DS
+FEA --> DS
+FEA --> TR
+FEA --> INF
+TR --> MS
+MS --> INF
+MS --> EV
+EV --> RS
+</pre></div>
+<p class="fig">Figure 3: Architecture diagram</p>
+
+<h3>1.4 Modules and their roles</h3>
+<div class="tablewrap">
+<table>
+<tr><th>Module</th><th>Files</th><th>Reads</th><th>Writes</th></tr>
+<tr><td>M1 Data Preparation</td><td><code>download_data.py</code>, <code>preprocessing.py</code>, <code>feature_extraction.py</code></td><td>Dataset source</td><td><code>data/raw</code>, <code>data/processed</code>, <code>data/features</code></td></tr>
+<tr><td>M2 Model Training</td><td><code>train_baseline.py</code>, <code>train_deep_model.py</code></td><td><code>data/features</code></td><td><code>models/</code>, training results</td></tr>
+<tr><td>M3 Evaluation and Robustness</td><td><code>evaluate.py</code>, <code>robustness_test.py</code></td><td><code>models/</code>, test split, processed audio</td><td><code>results/</code></td></tr>
+<tr><td>M4 Web Application</td><td><code>app/app.py</code>, <code>templates/index.html</code></td><td><code>models/</code>, uploaded audio</td><td><code>app/static</code>, result page</td></tr>
+</table>
+</div>
+
+<!-- ============ M1 ============ -->
+<h2 id="m1">2. Module M1: Data Preparation</h2>
+<p><b>Responsibility:</b> download the dataset, clean every clip, and convert each clip into a 78-number feature vector, with a held-out 20% test split.</p>
+
+<h3>2.1 Data flow diagram (Level 1)</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+E1["External: FoR-2sec source"]
+P1(("1.1 Download dataset"))
+D1[("D1 data/raw")]
+P2(("1.2 Preprocess audio"))
+D2[("D2 data/processed")]
+P3(("1.3 Extract features"))
+D3[("D3 data/features")]
+E1 -->|"dataset archive"| P1
+P1 -->|"real and fake WAV files"| D1
+D1 -->|"raw clips"| P2
+P2 -->|"16 kHz 2-second clips"| D2
+D2 -->|"clean clips"| P3
+P3 -->|"78-number vectors, labels, test split"| D3
+</pre></div>
+<p class="fig">Figure 4: M1 data flow diagram</p>
+
+<h3>2.2 Class diagram</h3>
+<div class="diagram"><pre class="mermaid">
+classDiagram
+class DatasetDownloader {
+  +download_dataset()
+  +organize_by_label()
+}
+class AudioPreprocessor {
+  +int target_rate
+  +int target_length
+  +load(path)
+  +resample(audio)
+  +trim_silence(audio)
+  +normalize(audio)
+  +pad_or_cut(audio)
+  +process_all()
+}
+class FeatureExtractor {
+  +int n_coefficients
+  +extract_mfcc(audio)
+  +extract_lfcc(audio)
+  +extract_cqcc(audio)
+  +summarize(matrix)
+  +extract_vector(audio)
+}
+class DatasetBuilder {
+  +build_feature_table()
+  +save_csv_and_npy()
+  +save_test_split()
+}
+DatasetDownloader --> AudioPreprocessor : provides raw files
+AudioPreprocessor --> FeatureExtractor : provides clean audio
+FeatureExtractor --> DatasetBuilder : provides 78-number vectors
+</pre></div>
+<p class="fig">Figure 5: M1 class diagram</p>
+
+<h3>2.3 Sequence diagram</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+actor R as Researcher
+participant DD as download_data.py
+participant PP as preprocessing.py
+participant FE as feature_extraction.py
+participant FS as File system
+R->>DD: run
+DD->>FS: save real and fake WAV files to data/raw
+R->>PP: run
+loop each raw clip
+  PP->>FS: read raw clip
+  PP->>PP: resample, trim silence, normalize, pad or cut
+  PP->>FS: write clip to data/processed
+end
+R->>FE: run
+loop each processed clip
+  FE->>FS: read processed clip
+  FE->>FE: compute MFCC, LFCC, CQCC
+  FE->>FE: mean and std of each, join into 78 numbers
+end
+FE->>FS: write features.csv and features.npy
+FE->>FS: write test_split.csv
+</pre></div>
+<p class="fig">Figure 6: M1 sequence diagram</p>
+
+<h3>2.4 Activity diagram</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+S([Start]) --> A["Download FoR-2sec"]
+A --> B["Sort into raw/real and raw/fake"]
+B --> C{"More raw clips?"}
+C -->|yes| D["Load clip and resample to 16 kHz"]
+D --> E["Trim silence and normalize"]
+E --> F["Pad or cut to 32000 samples"]
+F --> G["Save to data/processed"]
+G --> C
+C -->|no| H{"More processed clips?"}
+H -->|yes| I["Compute MFCC, LFCC, CQCC"]
+I --> J["Mean and std of each, join to 78 numbers"]
+J --> K["Add label"]
+K --> H
+H -->|no| L["Save features.csv and features.npy"]
+L --> M["Save 20 percent as test_split.csv"]
+M --> Z([End])
+</pre></div>
+<p class="fig">Figure 7: M1 activity diagram</p>
+
+<!-- ============ M2 ============ -->
+<h2 id="m2">3. Module M2: Model Training</h2>
+<p><b>Responsibility:</b> train three classical models and one deep model on the feature vectors, compare them, and save the trained models.</p>
+
+<h3>3.1 Data flow diagram (Level 1)</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+D3[("D3 data/features")]
+P1(("2.1 Train baseline models"))
+P2(("2.2 Train deep model"))
+D4[("D4 models")]
+D5[("D5 results")]
+D3 -->|"78-number vectors and labels"| P1
+D3 -->|"vectors reshaped to 6x13"| P2
+P1 -->|"baseline_model.pkl, scaler.pkl"| D4
+P1 -->|"baseline_comparison.csv"| D5
+P2 -->|"deep_model.h5"| D4
+P2 -->|"training_curves.png"| D5
+</pre></div>
+<p class="fig">Figure 8: M2 data flow diagram</p>
+
+<h3>3.2 Class diagram</h3>
+<div class="diagram"><pre class="mermaid">
+classDiagram
+class BaselineTrainer {
+  +load_features()
+  +split_data()
+  +fit_scaler()
+  +train_logistic_regression()
+  +train_svm_rbf()
+  +train_random_forest()
+  +compare_models()
+  +save_best_model()
+}
+class DeepModelTrainer {
+  +load_features()
+  +reshape_to_grid()
+  +train()
+  +plot_curves()
+  +save_model()
+}
+class ResNeXtCNN {
+  +int cardinality
+  +build_model()
+  +resnext_block()
+}
+class ModelStore {
+  +save_pickle()
+  +save_h5()
+}
+BaselineTrainer --> ModelStore : saves model and scaler
+DeepModelTrainer --> ResNeXtCNN : builds
+DeepModelTrainer --> ModelStore : saves model
+</pre></div>
+<p class="fig">Figure 9: M2 class diagram</p>
+
+<h3>3.3 Sequence diagram</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+actor R as Researcher
+participant BT as train_baseline.py
+participant DT as train_deep_model.py
+participant FS as File system
+R->>BT: run
+BT->>FS: read features.csv
+BT->>BT: split data, fit scaler, train 3 models
+BT->>BT: compare accuracy, precision, recall, F1
+BT->>FS: save baseline_model.pkl, scaler.pkl, baseline_comparison.csv
+R->>DT: run
+DT->>FS: read features.csv
+DT->>DT: reshape 78 to 6x13, build CNN
+loop each epoch
+  DT->>DT: train and validate
+end
+DT->>FS: save deep_model.h5 and training_curves.png
+</pre></div>
+<p class="fig">Figure 10: M2 sequence diagram</p>
+
+<h3>3.4 Activity diagram</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+S([Start]) --> A["Load features.csv"]
+A --> B["Split into train and test"]
+B --> C["Fit StandardScaler on train data"]
+C --> D["Train Logistic Regression"]
+D --> E["Train SVM with RBF kernel"]
+E --> F["Train Random Forest"]
+F --> G["Compare metrics of the three models"]
+G --> H["Save best model and scaler"]
+H --> I["Reshape vectors to 6x13 grid"]
+I --> J["Build ResNeXt-inspired CNN"]
+J --> K{"More epochs?"}
+K -->|yes| L["Train and validate"]
+L --> K
+K -->|no| M["Save deep_model.h5 and training curves"]
+M --> Z([End])
+</pre></div>
+<p class="fig">Figure 11: M2 activity diagram</p>
+
+<!-- ============ M3 ============ -->
+<h2 id="m3">4. Module M3: Evaluation and Robustness</h2>
+<p><b>Responsibility:</b> measure the trained models on unseen test data, then measure them again on damaged audio.</p>
+
+<h3>4.1 Data flow diagram (Level 1)</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+D3[("D3 test_split.csv")]
+D2[("D2 data/processed")]
+D4[("D4 models")]
+P1(("3.1 Evaluate model"))
+P2(("3.2 Robustness test"))
+D5[("D5 results")]
+D4 -->|"model"| P1
+D3 -->|"test vectors and labels"| P1
+P1 -->|"metrics, confusion matrix, ROC curve"| D5
+D4 -->|"model"| P2
+D2 -->|"test audio clips"| P2
+P2 -->|"robustness table and chart"| D5
+</pre></div>
+<p class="fig">Figure 12: M3 data flow diagram</p>
+
+<h3>4.2 Class diagram</h3>
+<div class="diagram"><pre class="mermaid">
+classDiagram
+class Evaluator {
+  +load_model(path, type)
+  +load_test_data()
+  +predict()
+  +compute_metrics()
+  +plot_confusion_matrix()
+  +plot_roc_curve()
+  +write_report()
+}
+class MetricsCalculator {
+  +accuracy()
+  +precision()
+  +recall()
+  +f1_score()
+  +auc()
+  +eer()
+}
+class RobustnessTester {
+  +load_model(path, type)
+  +score_clean_audio()
+  +test_condition(name)
+  +write_results_csv()
+  +plot_chart()
+}
+class DegradationSimulator {
+  +add_white_noise(snr_db)
+  +compress_like_mp3()
+  +shift_pitch_and_time()
+}
+Evaluator --> MetricsCalculator : uses
+RobustnessTester --> MetricsCalculator : uses
+RobustnessTester --> DegradationSimulator : uses
+</pre></div>
+<p class="fig">Figure 13: M3 class diagram</p>
+
+<h3>4.3 Sequence diagram</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+actor R as Researcher
+participant EV as evaluate.py
+participant RT as robustness_test.py
+participant FS as File system
+R->>EV: run with model path and model type
+EV->>FS: load model and test_split.csv
+EV->>EV: predict and compute metrics
+EV->>FS: save confusion_matrix.png, roc_curve.png, metrics.txt, evaluation_metrics.json
+R->>RT: run with model path and model type
+RT->>FS: load model and test audio
+RT->>RT: score clean audio
+loop each damage type
+  RT->>RT: damage audio, extract features, predict
+end
+RT->>FS: save robustness_results.csv and robustness_chart.png
+</pre></div>
+<p class="fig">Figure 14: M3 sequence diagram</p>
+
+<h3>4.4 Activity diagram</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+S([Start]) --> A["Read model path and model type"]
+A --> B{"Model type?"}
+B -->|baseline| C["Load pkl model and scaler"]
+B -->|deep| D["Load h5 model"]
+C --> E["Load test split"]
+D --> E
+E --> F["Predict"]
+F --> G["Compute accuracy, precision, recall, F1, AUC, EER"]
+G --> H["Save plots and reports"]
+H --> I["Score clean test audio"]
+I --> J{"More damage types?"}
+J -->|yes| K["Apply damage, extract features, predict"]
+K --> L["Record accuracy and F1"]
+L --> J
+J -->|no| M["Save robustness table and chart"]
+M --> Z([End])
+</pre></div>
+<p class="fig">Figure 15: M3 activity diagram</p>
+
+<!-- ============ M4 ============ -->
+<h2 id="m4">5. Module M4: Web Application</h2>
+<p><b>Responsibility:</b> accept an uploaded audio clip, run it through the same preprocessing and feature steps as training, predict with the saved model, and show the result.</p>
+
+<h3>5.1 Data flow diagram (Level 1)</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+E1["External: End user"]
+P1(("4.1 Receive upload"))
+P2(("4.2 Preprocess and extract features"))
+P3(("4.3 Predict"))
+P4(("4.4 Show result"))
+D4[("D4 models")]
+D6[("D6 app/static")]
+E1 -->|"audio file"| P1
+P1 -->|"saved file"| D6
+D6 -->|"audio file"| P2
+P2 -->|"78-number vector"| P3
+D4 -->|"model and scaler"| P3
+P3 -->|"label and confidence"| P4
+P4 -->|"result page"| E1
+</pre></div>
+<p class="fig">Figure 16: M4 data flow diagram</p>
+
+<h3>5.2 Class diagram</h3>
+<div class="diagram"><pre class="mermaid">
+classDiagram
+class IndexPage {
+  +show_upload_area()
+  +show_result()
+}
+class FlaskApp {
+  +index()
+  +predict_route()
+  +allowed_file(name)
+}
+class PredictionService {
+  +predict(file_path)
+  +to_label(score)
+}
+class ModelLoader {
+  +load_model()
+  +load_scaler()
+}
+class AudioPreprocessor
+class FeatureExtractor
+IndexPage --> FlaskApp : sends audio file
+FlaskApp --> PredictionService : calls
+PredictionService --> AudioPreprocessor : uses
+PredictionService --> FeatureExtractor : uses
+PredictionService --> ModelLoader : uses
+</pre></div>
+<p class="fig">Figure 17: M4 class diagram</p>
+
+<h3>5.3 Sequence diagram</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+actor U as User
+participant UI as index.html
+participant API as app.py
+participant PS as Prediction logic
+participant M as Saved model and scaler
+U->>UI: drop audio file
+UI->>API: send file
+API->>API: check file type
+alt unsupported type
+  API-->>UI: error message
+  UI-->>U: show error
+else supported type
+  API->>PS: file path
+  PS->>PS: preprocess and extract 78 features
+  PS->>M: scale and predict
+  M-->>PS: score
+  PS-->>API: label and confidence
+  API-->>UI: result
+  UI-->>U: show Genuine or Deepfake
+end
+</pre></div>
+<p class="fig">Figure 18: M4 sequence diagram</p>
+
+<h3>5.4 Activity diagram</h3>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+S([Start server]) --> A["Load model and scaler"]
+A --> B["Show index.html on port 5000"]
+B --> C["User uploads audio"]
+C --> D{"Supported type?"}
+D -->|no| E["Show error"]
+E --> C
+D -->|yes| F["Save file in app/static"]
+F --> G["Preprocess audio"]
+G --> H["Extract 78 features"]
+H --> I["Scale and predict"]
+I --> J{"Score above threshold?"}
+J -->|yes| K["Deepfake"]
+J -->|no| L["Genuine"]
+K --> M["Show label and confidence"]
+L --> M
+M --> Z([End])
+</pre></div>
+<p class="fig">Figure 19: M4 activity diagram</p>
+
+</body>
+</html>

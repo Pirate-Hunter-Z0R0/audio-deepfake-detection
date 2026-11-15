@@ -1,0 +1,69 @@
+# ==============================================================================
+# Audio Deepfake Detection - Voice Generation & Applio Configuration
+# ==============================================================================
+# All paths can be overridden via environment variables or CLI flags so the
+# same codebase runs seamlessly in Google Colab and local workstations.
+
+applio:
+  # Base directory where Applio repository is cloned
+  applio_dir: "/content/Applio"
+  
+  # Directory where trained teammate models and index files are stored
+  models_dir: "/content/drive/MyDrive/ApplioBackup"
+  
+  # Python executable to invoke Applio's core.py
+  python_exec: "python"
+  
+  # Subprocess execution timeout in seconds
+  timeout_seconds: 120
+
+generation:
+  # Output directory for final RVC-converted synthetic audio (label = 1)
+  output_dir: "data/synthetic_rvc"
+  
+  # Directory for intermediate Stage 1 base TTS audio (for audit and inspection)
+  intermediate_tts_dir: "data/intermediate_tts"
+  
+  # Directory where real teammate reference recordings are kept (label = 0)
+  real_recordings_dir: "data/real_recordings"
+
+models:
+  # Available trained teammate models and their relative file paths under models_dir
+  teammate01:
+    pth_file: "teammate01_rvc/teammate01_rvc_100e_3900s.pth"
+    index_file: "teammate01_rvc/teammate01_rvc.index"
+    gender: "male"
+    default_tts_voice: "en-IN-PrabhatNeural"
+  
+  teammate02:
+    pth_file: "teammate02_rvc/teammate02_rvc_100e_3700s.pth"
+    index_file: "teammate02_rvc/teammate02_rvc.index"
+    gender: "male"
+    default_tts_voice: "en-IN-PrabhatNeural"
+  
+  teammate03:
+    pth_file: "teammate03_rvc/teammate03_rvc_100e_4100s.pth"
+    index_file: "teammate03_rvc/teammate03_rvc.index"
+    gender: "male"
+    default_tts_voice: "en-IN-PrabhatNeural"
+
+  teammate04:
+    pth_file: "teammate04_rvc/teammate04_rvc_100e.pth"
+    index_file: "teammate04_rvc/teammate04_rvc.index"
+    gender: "male"
+    default_tts_voice: "en-IN-PrabhatNeural"
+
+  teammate05:
+    pth_file: "teammate05_rvc/teammate05_rvc_100e_3500s.pth"
+    index_file: "teammate05_rvc/teammate05_rvc.index"
+    gender: "female"
+    default_tts_voice: "en-IN-NeerajNeural"
+
+inference_defaults:
+  pitch: 0
+  index_rate: 0.80
+  protect: 0.33
+  f0_method: "rmvpe"
+  embedder_model: "contentvec"
+  export_format: "WAV"
+  tts_rate: 0

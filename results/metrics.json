@@ -1,0 +1,121 @@
+{
+    "dataset_summary": {
+        "total_samples": 199,
+        "real_samples": 154,
+        "fake_samples": 45,
+        "decision_threshold": 0.5
+    },
+    "classification_metrics": {
+        "accuracy_%": 92.46,
+        "binary_fake_class": {
+            "precision": 0.8947,
+            "recall": 0.7556,
+            "f1_score": 0.8193
+        },
+        "macro_average": {
+            "precision": 0.9132,
+            "recall": 0.8648,
+            "f1_score": 0.8858
+        },
+        "per_class": {
+            "class_0_real": {
+                "precision": 0.9317,
+                "recall": 0.974,
+                "f1_score": 0.9524,
+                "support": 154
+            },
+            "class_1_fake": {
+                "precision": 0.8947,
+                "recall": 0.7556,
+                "f1_score": 0.8193,
+                "support": 45
+            }
+        },
+        "confusion_matrix": {
+            "true_negatives_real": 150,
+            "false_positives_false_alarms": 4,
+            "false_negatives_missed_deepfakes": 11,
+            "true_positives_detected_deepfakes": 34,
+            "false_positive_rate_%": 2.6,
+            "false_negative_rate_%": 24.44
+        }
+    },
+    "biometric_measures": {
+        "roc_auc": 0.9221,
+        "equal_error_rate_%": 13.81,
+        "eer_operating_threshold": 0.0408
+    },
+    "signal_level_energies": {
+        "definition": "Mean Squared Cepstral Energy (MSCE) = (1 / (T * K)) * sum_t sum_k [ c_{k,t}^2 ] across K=13 cepstral coefficients and T frames.",
+        "justification": "Measures total acoustic power variance distributed across Mel, Linear, and Constant-Q filterbanks. Normalized by T and K to ensure invariance to clip length.",
+        "statistics": {
+            "mfcc_energy": {
+                "real_mean": 5464.83,
+                "real_std": 949.53,
+                "fake_mean": 5273.34,
+                "fake_std": 1001.59,
+                "t_statistic": 1.13,
+                "p_value": 0.26221697768385716,
+                "mann_whitney_u": 3565.0,
+                "mann_whitney_p": 0.7696951180823564,
+                "statistically_discriminative": false
+            },
+            "lfcc_energy": {
+                "real_mean": 21.15,
+                "real_std": 23.65,
+                "fake_mean": 21.26,
+                "fake_std": 2.81,
+                "t_statistic": -0.056,
+                "p_value": 0.9554849480364355,
+                "mann_whitney_u": 2225.5,
+                "mann_whitney_p": 0.0002666299707613449,
+                "statistically_discriminative": false
+            },
+            "cqcc_energy": {
+                "real_mean": 12640.59,
+                "real_std": 2789.92,
+                "fake_mean": 11526.35,
+                "fake_std": 3681.63,
+                "t_statistic": 1.86,
+                "p_value": 0.06787185699693689,
+                "mann_whitney_u": 3992.0,
+                "mann_whitney_p": 0.1213337394136617,
+                "statistically_discriminative": false
+            }
+        }
+    },
+    "inference_latency": {
+        "hardware": {
+            "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+            "logical_cores": 12,
+            "operating_system": "Windows-11-10.0.26300-SP0",
+            "python_version": "3.12.10",
+            "device_type": "Host Laptop CPU (Intel 64-bit)"
+        },
+        "benchmark_runs": 30,
+        "preprocessing_ms": {
+            "mean": 2.46,
+            "std": 0.46,
+            "min": 1.98,
+            "max": 4.01
+        },
+        "feature_extraction_ms": {
+            "mean": 44.1,
+            "std": 6.56,
+            "min": 37.38,
+            "max": 70.6
+        },
+        "model_inference_ms": {
+            "mean": 89.0,
+            "std": 23.37,
+            "min": 73.88,
+            "max": 196.85
+        },
+        "end_to_end_total_ms": {
+            "mean": 135.55,
+            "std": 25.36,
+            "min": 115.58,
+            "max": 252.27
+        }
+    }
+}

@@ -1,0 +1,162 @@
+{
+    "overall_summary": {
+        "total_audio_clips": 162,
+        "total_real": 123,
+        "total_synthetic": 39,
+        "accuracy_%": 88.27,
+        "false_positive_rate_%": 0.0,
+        "false_negative_rate_%": 48.72,
+        "total_misclassifications": 19
+    },
+    "held_out_unseen_summary": {
+        "total_unseen_clips": 24,
+        "unseen_accuracy_%": 20.83,
+        "unseen_false_positive_rate_%": 0.0,
+        "unseen_false_negative_rate_%": 90.48
+    },
+    "threshold_metrics": {
+        "current_operational_threshold": 0.5,
+        "equal_error_rate_%": 18.73,
+        "eer_threshold": 0.0043,
+        "youden_optimal_threshold": 0.0051,
+        "roc_auc": 0.8988
+    },
+    "calibration": {
+        "brier_score": 0.1056,
+        "expected_calibration_error_%": 11.02,
+        "breakdown": [
+            {
+                "bin_range": "0.00-0.20",
+                "count": 140,
+                "mean_predicted_fake_prob": 0.0054,
+                "actual_fraction_fake": 0.1214,
+                "absolute_calibration_gap": 0.116
+            },
+            {
+                "bin_range": "0.20-0.40",
+                "count": 1,
+                "mean_predicted_fake_prob": 0.2183,
+                "actual_fraction_fake": 1.0,
+                "absolute_calibration_gap": 0.7817
+            },
+            {
+                "bin_range": "0.40-0.60",
+                "count": 1,
+                "mean_predicted_fake_prob": 0.4083,
+                "actual_fraction_fake": 1.0,
+                "absolute_calibration_gap": 0.5917
+            },
+            {
+                "bin_range": "0.80-1.00",
+                "count": 20,
+                "mean_predicted_fake_prob": 0.9885,
+                "actual_fraction_fake": 1.0,
+                "absolute_calibration_gap": 0.0115
+            }
+        ]
+    },
+    "breakdowns": {
+        "by_speaker": {
+            "teammate01": {
+                "total": 51,
+                "errors": 13,
+                "error_rate_%": 25.49,
+                "real_count": 30,
+                "fake_count": 21,
+                "mean_fake_prob": 0.1658
+            },
+            "teammate02": {
+                "total": 37,
+                "errors": 0,
+                "error_rate_%": 0.0,
+                "real_count": 31,
+                "fake_count": 6,
+                "mean_fake_prob": 0.1642
+            },
+            "teammate03": {
+                "total": 38,
+                "errors": 0,
+                "error_rate_%": 0.0,
+                "real_count": 32,
+                "fake_count": 6,
+                "mean_fake_prob": 0.1589
+            },
+            "teammate04": {
+                "total": 36,
+                "errors": 6,
+                "error_rate_%": 16.67,
+                "real_count": 30,
+                "fake_count": 6,
+                "mean_fake_prob": 0.0162
+            }
+        },
+        "by_source": {
+            "TTS+RVC_v2": {
+                "total": 24,
+                "errors": 6,
+                "error_rate_%": 25.0,
+                "mean_fake_prob": 0.7719
+            },
+            "XTTS-v2": {
+                "total": 15,
+                "errors": 13,
+                "error_rate_%": 86.67,
+                "mean_fake_prob": 0.156
+            },
+            "recorded_human": {
+                "total": 123,
+                "errors": 0,
+                "error_rate_%": 0.0,
+                "mean_fake_prob": 0.0023
+            }
+        },
+        "by_duration": {
+            "<3.5s": {
+                "total": 0,
+                "errors": 0,
+                "error_rate_%": 0.0
+            },
+            "3.5-5.5s": {
+                "total": 132,
+                "errors": 10,
+                "error_rate_%": 7.58
+            },
+            ">5.5s": {
+                "total": 30,
+                "errors": 9,
+                "error_rate_%": 30.0
+            }
+        },
+        "by_snr": {
+            "Low (<18 dB)": {
+                "total": 17,
+                "errors": 0,
+                "error_rate_%": 0.0
+            },
+            "Medium (18-25 dB)": {
+                "total": 73,
+                "errors": 0,
+                "error_rate_%": 0.0
+            },
+            "High (>25 dB)": {
+                "total": 72,
+                "errors": 19,
+                "error_rate_%": 26.39
+            }
+        }
+    },
+    "leakage_audit": {
+        "speaker_leakage_in_adaptation": {
+            "status": "DETECTED IN ADAPTED MODEL",
+            "evidence": "teammate01, teammate02, and teammate03 had both their real recordings AND their synthetic RVC clones included in the adaptation training set. The adapted model achieved 100% detection on teammates 01-03, but failed completely on unseen teammate04 (0/6 caught, 100% FN rate). This proves that the detector memorized speaker vocal tract identities rather than general vocoder traits."
+        },
+        "text_sentence_leakage": {
+            "status": "CONTROLLED BENCHMARK",
+            "evidence": "Synthetic RVC clips share identical benchmark sentences (sentences 1 to 6 from data/test_sentences.txt) across all 4 teammates. However, real recordings contain conversational spoken paragraphs from training audio."
+        },
+        "held_out_speaker_evaluation": {
+            "status": "CRITICAL VULNERABILITY EXPOSED",
+            "evidence": "When tested on teammate04 (the ONLY speaker completely held out from adaptation training), all 6 RVC clones evaded detection with fake probabilities between 0.0015 and 0.4083."
+        }
+    }
+}

@@ -1,0 +1,5 @@
+Condition,Accuracy,Accuracy %,Precision,Recall,F1-Score,Accuracy Drop %
+Clean Baseline,1.0,100.0,1.0,1.0,1.0,0.0
+Background White Noise (10 dB SNR),0.51,51.0,1.0,0.02,0.0392,49.0
+Light MP3 Compression Artifacts,0.51,51.0,0.5051,1.0,0.6711,49.0
+Pitch & Time Perturbations,0.71,71.0,1.0,0.42,0.5915,29.0
