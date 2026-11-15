@@ -159,7 +159,7 @@ python app/app.py
 Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wav, .mp3, .flac) through the web interface to get a real-time genuine vs. deepfake classification with confidence scores.
 
 ---
-
+<!--
 ## 📊 Results Summary
 
 ### Baseline Model Performance
@@ -169,7 +169,7 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 | Logistic Regression  | [ACCURACY]%    | [PRECISION]    | [RECALL]       | [F1]           |
 | SVM (RBF kernel)     | [ACCURACY]%    | [PRECISION]    | [RECALL]       | [F1]           |
 | Random Forest        | [ACCURACY]%    | [PRECISION]    | [RECALL]       | [F1]           |
-
+-->
 ### Deep Learning Model Performance
 
 | Metric    | Value          |
@@ -180,7 +180,7 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 | F1-Score  | [F1]           |
 | AUC       | [AUC]          |
 | EER       | [EER]%         |
-
+<!--
 ### Robustness Test Findings
 
 | Condition             | Baseline Accuracy | Deep Model Accuracy |
@@ -189,7 +189,7 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 | White Noise (10 dB)   | [ACCURACY]%       | [ACCURACY]%         |
 | MP3 Compression       | [ACCURACY]%       | [ACCURACY]%         |
 | Pitch/Time Shift      | [ACCURACY]%       | [ACCURACY]%         |
-
+-->
 > **Key Finding:** Both models show significant accuracy drops under audio degradation, especially white noise. This aligns with findings from Rabhi et al. (2024) that standard spectral-feature-based detectors are vulnerable to signal perturbations.
 
 ---
@@ -224,7 +224,7 @@ Starts the Flask server at **http://localhost:5000**. Upload any audio file (.wa
 2. **Rabhi, B., Ma, H., Bakiras, S., & Ben Ayed, R. (2024).** *"Audio-Deepfake Detection: Adversarial Attacks and Countermeasures."* — Demonstrates that audio deepfake detectors are vulnerable to adversarial perturbations and evaluates countermeasures for improved robustness.
 
 ---
-
+<!--
 ## 👥 Credits
 
 Developed as a minor academic project for **[YOUR COLLEGE NAME]** by:
@@ -232,7 +232,7 @@ Developed as a minor academic project for **[YOUR COLLEGE NAME]** by:
 - [Team Member 2]
 - [Team Member 3]
 - [Team Member 4]
-
+-->
 ---
 
 *Built with Python, librosa, scikit-learn, TensorFlow/Keras, and Flask.*
